@@ -303,4 +303,3 @@ MIT License - see LICENSE file for details.
 =======
 # salesforce-debug-log-downloader
 A powerful CLI tool to search and download Salesforce debug logs using session tokens. Batch process hundreds of logs, find specific patterns, and auto-download matches with organized filenames.
->>>>>>> b0eb50e78bb93feb842ffab4ca84609b67065786
