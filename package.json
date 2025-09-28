@@ -1,0 +1,30 @@
+{
+  "name": "salesforce-debug-log-search",
+  "version": "1.0.0",
+  "description": "A tool to search Salesforce debug logs using session tokens",
+  "main": "dist/index.js",
+  "bin": {
+    "sf-debug-search": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "ts-node src/cli.ts",
+    "start": "node dist/cli.js",
+    "watch": "tsc --watch"
+  },
+  "keywords": ["salesforce", "debug", "logs", "search", "apex"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.5.0",
+    "commander": "^11.0.0",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.3.1",
+    "moment": "^2.29.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.5.0",
+    "typescript": "^5.1.6",
+    "ts-node": "^10.9.1"
+  }
+}
