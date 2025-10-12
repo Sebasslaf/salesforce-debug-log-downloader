@@ -495,6 +495,213 @@ program
     }
   });
 
+// Delete logs command
+program
+  .command('delete <logIds...>')
+  .description('⚠️  DELETE specific debug logs by their IDs (DESTRUCTIVE OPERATION)')
+  .option('--force', 'Skip confirmation prompt (dangerous!)')
+  .option('--dry-run', 'Show what would be deleted without actually deleting')
+  .action(async (logIds, options) => {
+    try {
+      const client = createClient(program.opts());
+
+      console.log(chalk.red('⚠️  DESTRUCTIVE OPERATION: DELETE DEBUG LOGS'));
+      console.log(chalk.yellow(`📋 Requested to delete ${logIds.length} log(s):`));
+      
+      logIds.forEach((logId: string, index: number) => {
+        console.log(chalk.white(`   ${index + 1}. ${logId}`));
+      });
+
+      // Test connection first
+      console.log(chalk.gray('\nTesting connection...'));
+      const isConnected = await client.testConnection();
+      if (!isConnected) {
+        console.error(chalk.red('❌ Failed to connect to Salesforce. Please check your credentials.'));
+        process.exit(1);
+      }
+      console.log(chalk.green('✅ Connected to Salesforce'));
+
+      // Dry run mode
+      if (options.dryRun) {
+        console.log(chalk.yellow('\n🔍 DRY RUN MODE - No actual deletions will be made'));
+        console.log(chalk.blue('The following logs would be deleted:'));
+        logIds.forEach((logId: string, index: number) => {
+          console.log(chalk.white(`   ${index + 1}. ${logId}`));
+        });
+        console.log(chalk.yellow('\n💡 Run without --dry-run to actually delete these logs'));
+        return;
+      }
+
+      // Safety confirmation (unless --force is used)
+      if (!options.force) {
+        const readline = require('readline');
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+
+        const answer = await new Promise<string>((resolve) => {
+          rl.question(chalk.red('\n⚠️  Are you absolutely sure you want to DELETE these logs? This cannot be undone! (type "DELETE" to confirm): '), resolve);
+        });
+        
+        rl.close();
+
+        if (answer !== 'DELETE') {
+          console.log(chalk.yellow('❌ Deletion cancelled. Logs were not deleted.'));
+          return;
+        }
+      }
+
+      // Start timing
+      const startTime = Date.now();
+      
+      console.log(chalk.red('\n🗑️  Starting deletion process...'));
+      const { deleted, failed } = await client.deleteDebugLogs(logIds);
+
+      // Calculate timing
+      const endTime = Date.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+      // Display results
+      console.log(chalk.blue('\n📊 Deletion Summary:'));
+      console.log(chalk.green(`   ✅ Successfully deleted: ${deleted.length}`));
+      if (failed.length > 0) {
+        console.log(chalk.red(`   ❌ Failed to delete: ${failed.length}`));
+        console.log(chalk.red('   Failed log IDs:'));
+        failed.forEach(logId => {
+          console.log(chalk.red(`      - ${logId}`));
+        });
+      }
+      console.log(chalk.white(`   ⏱️  Total time: ${duration} seconds`));
+
+      if (deleted.length > 0) {
+        console.log(chalk.red('\n⚠️  LOGS HAVE BEEN PERMANENTLY DELETED!'));
+      }
+
+    } catch (error) {
+      console.error(chalk.red(`❌ Error: ${error}`));
+      process.exit(1);
+    }
+  });
+
+// Delete all logs command (VERY DANGEROUS)
+program
+  .command('delete-all')
+  .description('⚠️  DELETE ALL debug logs in the org (EXTREMELY DANGEROUS)')
+  .option('--force', 'Skip confirmation prompts (extremely dangerous!)')
+  .option('--dry-run', 'Show what would be deleted without actually deleting')
+  .option('-u, --user-id <userId>', 'Delete logs only for specific user')
+  .option('--date-from <date>', 'Delete logs from date (YYYY-MM-DD or ISO format)')
+  .option('--date-to <date>', 'Delete logs to date (YYYY-MM-DD or ISO format)')
+  .action(async (options) => {
+    try {
+      const client = createClient(program.opts());
+
+      console.log(chalk.red('🚨 EXTREMELY DANGEROUS OPERATION: DELETE ALL DEBUG LOGS'));
+      
+      // Test connection first
+      console.log(chalk.gray('Testing connection...'));
+      const isConnected = await client.testConnection();
+      if (!isConnected) {
+        console.error(chalk.red('❌ Failed to connect to Salesforce. Please check your credentials.'));
+        process.exit(1);
+      }
+      console.log(chalk.green('✅ Connected to Salesforce'));
+
+      // Get logs to delete
+      let logs;
+      if (options.userId) {
+        logs = await client.getAllDebugLogsByUser(options.userId);
+        console.log(chalk.yellow(`📋 Found ${logs.length} logs for user ${options.userId}`));
+      } else if (options.dateFrom || options.dateTo) {
+        logs = await client.getAllDebugLogsByDateRange(
+          formatDate(options.dateFrom),
+          formatDate(options.dateTo)
+        );
+        const dateRange = [
+          options.dateFrom ? `from ${options.dateFrom}` : '',
+          options.dateTo ? `to ${options.dateTo}` : ''
+        ].filter(Boolean).join(' ');
+        console.log(chalk.yellow(`📋 Found ${logs.length} logs ${dateRange}`));
+      } else {
+        logs = await client.getAllDebugLogs();
+        console.log(chalk.red(`📋 Found ${logs.length} TOTAL logs in the org`));
+      }
+
+      if (logs.length === 0) {
+        console.log(chalk.yellow('No logs found to delete.'));
+        return;
+      }
+
+      // Dry run mode
+      if (options.dryRun) {
+        console.log(chalk.yellow('\n🔍 DRY RUN MODE - No actual deletions will be made'));
+        console.log(chalk.blue(`Would delete ${logs.length} logs`));
+        console.log(chalk.yellow('\n💡 Run without --dry-run to actually delete these logs'));
+        return;
+      }
+
+      // Multiple safety confirmations (unless --force is used)
+      if (!options.force) {
+        const readline = require('readline');
+        const rl = readline.createInterface({
+          input: process.stdin,
+          output: process.stdout
+        });
+
+        // First confirmation
+        const answer1 = await new Promise<string>((resolve) => {
+          rl.question(chalk.red(`\n⚠️  You are about to DELETE ${logs.length} debug logs. This CANNOT be undone! Type "I UNDERSTAND" to continue: `), resolve);
+        });
+        
+        if (answer1 !== 'I UNDERSTAND') {
+          rl.close();
+          console.log(chalk.yellow('❌ Deletion cancelled. Logs were not deleted.'));
+          return;
+        }
+
+        // Second confirmation
+        const answer2 = await new Promise<string>((resolve) => {
+          rl.question(chalk.red(`\n🚨 FINAL WARNING: This will permanently delete ${logs.length} logs. Type "DELETE ALL LOGS" to proceed: `), resolve);
+        });
+        
+        rl.close();
+
+        if (answer2 !== 'DELETE ALL LOGS') {
+          console.log(chalk.yellow('❌ Deletion cancelled. Logs were not deleted.'));
+          return;
+        }
+      }
+
+      // Start timing
+      const startTime = Date.now();
+      
+      console.log(chalk.red('\n🗑️  Starting mass deletion process...'));
+      const logIds = logs.map(log => log.Id);
+      const { deleted, failed } = await client.deleteDebugLogs(logIds);
+
+      // Calculate timing
+      const endTime = Date.now();
+      const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+      // Display results
+      console.log(chalk.blue('\n📊 Mass Deletion Summary:'));
+      console.log(chalk.green(`   ✅ Successfully deleted: ${deleted.length}`));
+      if (failed.length > 0) {
+        console.log(chalk.red(`   ❌ Failed to delete: ${failed.length}`));
+      }
+      console.log(chalk.white(`   ⏱️  Total time: ${duration} seconds`));
+
+      if (deleted.length > 0) {
+        console.log(chalk.red('\n🚨 LOGS HAVE BEEN PERMANENTLY DELETED FROM YOUR ORG!'));
+      }
+
+    } catch (error) {
+      console.error(chalk.red(`❌ Error: ${error}`));
+      process.exit(1);
+    }
+  });
+
 // Test connection command
 program
   .command('test')

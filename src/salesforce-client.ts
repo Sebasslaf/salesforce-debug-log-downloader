@@ -343,6 +343,55 @@ export class SalesforceClient {
   }
 
   /**
+   * Delete a single debug log by ID
+   */
+  async deleteDebugLog(logId: string): Promise<void> {
+    try {
+      await this.client.delete(`/tooling/sobjects/ApexLog/${logId}`);
+    } catch (error) {
+      throw new Error(`Failed to delete debug log ${logId}: ${error}`);
+    }
+  }
+
+  /**
+   * Delete multiple debug logs efficiently
+   */
+  async deleteDebugLogs(logIds: string[]): Promise<{ deleted: string[], failed: string[] }> {
+    const deleted: string[] = [];
+    const failed: string[] = [];
+    const batchSize = 10; // Process in batches to avoid overwhelming the API
+    
+    for (let i = 0; i < logIds.length; i += batchSize) {
+      const batch = logIds.slice(i, i + batchSize);
+      const batchPromises = batch.map(async (logId) => {
+        try {
+          await this.deleteDebugLog(logId);
+          return { logId, success: true };
+        } catch (error) {
+          console.warn(`Failed to delete log ${logId}: ${error}`);
+          return { logId, success: false };
+        }
+      });
+      
+      const batchResults = await Promise.all(batchPromises);
+      batchResults.forEach(({ logId, success }) => {
+        if (success) {
+          deleted.push(logId);
+        } else {
+          failed.push(logId);
+        }
+      });
+      
+      // Small delay between batches to be respectful to the API
+      if (i + batchSize < logIds.length) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+    }
+    
+    return { deleted, failed };
+  }
+
+  /**
    * Test the connection with current session token
    */
   async testConnection(): Promise<boolean> {

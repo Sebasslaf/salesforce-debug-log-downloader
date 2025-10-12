@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Salesforce Debug Log Search
 
 A powerful command-line tool to search through Salesforce debug logs using session tokens. Perfect for developers who need to quickly find specific patterns, errors, or events across multiple debug logs.
@@ -19,6 +18,8 @@ A powerful command-line tool to search through Salesforce debug logs using sessi
 ## Installation
 
 ```bash
+npm install
+npm run build
 npm install -g salesforce-debug-log-search
 ```
 
@@ -197,6 +198,29 @@ Options:
 - `--date-from <date>`: Filter from date
 - `--date-to <date>`: Filter to date
 
+### Delete Commands ⚠️ DESTRUCTIVE OPERATIONS
+
+**Delete Specific Logs:**
+```bash
+sf-debug-search delete <logId1> <logId2> ... [options]
+```
+
+Options:
+- `--dry-run`: Show what would be deleted without actually deleting
+- `--force`: Skip confirmation prompt (dangerous!)
+
+**Delete All Logs (EXTREMELY DANGEROUS):**
+```bash
+sf-debug-search delete-all [options]
+```
+
+Options:
+- `--dry-run`: Show what would be deleted without actually deleting
+- `--force`: Skip confirmation prompts (extremely dangerous!)
+- `-u, --user-id <userId>`: Delete logs only for specific user
+- `--date-from <date>`: Delete logs from date
+- `--date-to <date>`: Delete logs to date
+
 ## Examples
 
 ### Find Exceptions in Recent Logs
@@ -229,6 +253,21 @@ sf-debug-search search "ERROR" --date-from $(date +%Y-%m-%d) --download ./today-
 sf-debug-search download 07L000001234567 07L000001234568 --output-dir ./critical --verbose
 ```
 
+### Delete Old Logs (DESTRUCTIVE)
+```bash
+# Preview what would be deleted
+sf-debug-search delete-all --date-to 2024-01-01 --dry-run
+
+# Delete logs older than a specific date
+sf-debug-search delete-all --date-to 2024-01-01
+
+# Delete specific logs by ID
+sf-debug-search delete 07L000001234567 07L000001234568
+
+# Delete all logs for a specific user
+sf-debug-search delete-all --user-id 005000000012345
+```
+
 ## Downloaded File Structure
 
 When you download logs, the tool creates organized files:
@@ -247,6 +286,26 @@ When you download logs, the tool creates organized files:
 **Log Files (.log)**: Raw debug log content from Salesforce  
 **Metadata Files (.json)**: Log metadata plus search match details  
 **Summary File**: Overall download statistics and failed downloads
+
+## ⚠️ IMPORTANT SAFETY WARNINGS
+
+### Delete Operations Are Permanent
+- **No Undo**: Once deleted, debug logs cannot be recovered
+- **Use Dry Run**: Always test with `--dry-run` first
+- **Double Confirmation**: Commands require explicit confirmation phrases
+- **Backup First**: Consider downloading logs before deleting them
+
+### Recommended Safe Practices
+```bash
+# 1. Always preview first
+sf-debug-search delete-all --date-to 2024-01-01 --dry-run
+
+# 2. Download before deleting
+sf-debug-search search ".*" --date-to 2024-01-01 --all --download ./backup
+
+# 3. Then delete with confirmation
+sf-debug-search delete-all --date-to 2024-01-01
+```
 
 ## Programmatic Usage
 
@@ -300,7 +359,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## License
 
 MIT License - see LICENSE file for details.
-=======
-# salesforce-debug-log-downloader
-A powerful CLI tool to search and download Salesforce debug logs using session tokens. Batch process hundreds of logs, find specific patterns, and auto-download matches with organized filenames.
->>>>>>> b0eb50e78bb93feb842ffab4ca84609b67065786
